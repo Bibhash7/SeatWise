@@ -10,7 +10,7 @@ class Exam(models.Model):
     instruction = models.TextField()
     
     def __str__(self):
-        return self.exam_name
+        return self.exam_name + " : " +str(self.exam_id)
     
     
 class ExamCenter(models.Model):
@@ -20,7 +20,7 @@ class ExamCenter(models.Model):
     exam_id = models.ForeignKey(Exam, on_delete=models.CASCADE)
     
     def __str__(self):
-        return self.center_name
+        return self.center_name + " : " + str(self.exam_center_id)
     
 class Student(models.Model):
     student_id = models.BigIntegerField(primary_key=True)
@@ -38,7 +38,7 @@ class Student(models.Model):
         super(Student, self).save(*args, **kwargs)
     
     def __str__(self):
-        return self.first_name+" "+self.last_name + " : " + str(self.exam_center_choice)
+        return self.first_name+" "+self.last_name + " : " + str(self.exam_center_choice) + " : " + self.roll_number
             
 class Allocation(models.Model):
     exam_name = models.CharField()
