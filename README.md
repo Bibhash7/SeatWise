@@ -24,6 +24,7 @@ A web application designed to allocate seats according to exam center preference
   
 [![Seat-Wise-4.png](https://i.postimg.cc/j2phw0xN/Seat-Wise-4.png)](https://postimg.cc/7JNzdRTY)
 
-## Future Plans
-- Unit test and code coverage
+## Test Case Coverage Report: 92% code coverage
+
+- [![Seat-Wise-5.png](https://i.postimg.cc/fW2wV9Pw/Seat-Wise-5.png)](https://postimg.cc/Z0NkgCZg)
 
