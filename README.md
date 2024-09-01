@@ -20,6 +20,9 @@ A web application designed to allocate seats according to exam center preference
 - **Students**
   
 [![Seat-Wise-3.png](https://i.postimg.cc/k52DZVFJ/Seat-Wise-3.png)](https://postimg.cc/p9t25L64)
+- **API call via Postman**
+  
+[![Screenshot-2024-09-01-193021.png](https://i.postimg.cc/mD7d1JRv/Screenshot-2024-09-01-193021.png)](https://postimg.cc/S2NLwZnd)
 - **Seat Allocation View**
   
 [![Seat-Wise-4.png](https://i.postimg.cc/j2phw0xN/Seat-Wise-4.png)](https://postimg.cc/7JNzdRTY)
