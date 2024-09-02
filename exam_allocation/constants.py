@@ -30,6 +30,7 @@ class SuccessMessage(Enum):
 class ErrorMessage(Enum):
     ERROR = "Error"
     UNSUCCESSFUL_ALLOCATION = "Not enough seats."
+    EXAM_NOT_FOUND = "The exam name is invalid. Please check the exam name and try again."
     INTERNAL_SERVER_ERROR = "Internal server error."
     TOO_MANY_STUDENTS = "The total number of student exceeds seat limit in 2 shifts for one day. Add a new exam center and try again."
     

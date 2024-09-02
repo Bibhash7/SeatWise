@@ -1,37 +1,32 @@
-from django.contrib.postgres.aggregates import ArrayAgg
-from django.db.models import F
 from django.db import connection
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from here_debugger.debug import here_debug
 from collections import deque
-import pandas as pd
-from .models import Student, Exam, ExamCenter, Allocation
+from .models import Student, Exam, Allocation
 from .constants import TableAttributes, ErrorMessage, SuccessMessage, UtilityAttribues, RawSQL
+from .utils import groupify
 
-# Create your views here.
 
 @api_view(['POST'])
 def generate_allocation(request):
+    """
+        Allocates students based on their exam center preference.
+    Args:
+        request (str): The exam the students appearing
+
+    Returns:
+       Response : Success if successfully allocate students among exam centers. On failure an appropriate error message.
+    """
     try:
         exam_name = request.data.get(TableAttributes.EXAM_NAME.value,"")
-        if exam_name:
+        is_valid_exam = Exam.objects.filter(exam_name=exam_name).count()
+        if is_valid_exam:
             with connection.cursor() as cursor:
                 cursor.execute(RawSQL.TRUNCATE_TABLE_ALLOCATION.value)
             exam_date = Exam.objects.values_list(TableAttributes.EXAM_DATE.value, flat=True)[0]
-            exam_id = Exam.objects.filter(exam_name=exam_name).values_list(TableAttributes.EXAM_ID.value, flat=True)[0]
-            
-            center_students = list(Student.objects.values(TableAttributes.EXAM_CENTER_CHOICE.value).annotate(
-                roll_numbers=ArrayAgg(TableAttributes.ROLL_NUMBER.value, order_by=F(TableAttributes.ROLL_NUMBER.value)) 
-            ).order_by(TableAttributes.EXAM_CENTER_CHOICE.value))
-            
-            df_center_students = pd.DataFrame.from_dict(center_students)
-            exam_center = list(ExamCenter.objects.values(TableAttributes.EXAM_CENTER_ID.value,TableAttributes.TOTAL_CAPACITY.value))
-            df_exam_center = pd.DataFrame.from_dict(exam_center)
-            df_merged = pd.merge(df_exam_center, df_center_students, left_on=TableAttributes.EXAM_CENTER_ID.value, right_on=TableAttributes.EXAM_CENTER_CHOICE.value, how="inner")
-            processed_data = df_merged.to_dict(orient='records')
-            
+            processed_data = groupify.generate_student_group_data(TableAttributes.EXAM_CENTER_CHOICE.value)
             total_students = Student.objects.count()
             total_seats = 0
             shift = [UtilityAttribues.SHIFT_1.value, UtilityAttribues.SHIFT_2.value]
@@ -98,7 +93,10 @@ def generate_allocation(request):
                             total_capacity-=1
 
             Allocation.objects.bulk_create(final_allocation_list)
-        return Response({SuccessMessage.SUCCESS.value: SuccessMessage.ALLOCATION_SUCCESSFUL.value}, status=status.HTTP_200_OK)
+            return Response({SuccessMessage.SUCCESS.value: SuccessMessage.ALLOCATION_SUCCESSFUL.value}, status=status.HTTP_200_OK)
+        
+        else:
+            return Response({ErrorMessage.ERROR.value: ErrorMessage.EXAM_NOT_FOUND.value}, status=status.HTTP_404_NOT_FOUND)
     
     except Exception as error:
         here_debug(error)

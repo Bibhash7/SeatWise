@@ -11,5 +11,6 @@ djangorestframework = "*"
 python-dotenv = "*"
 django-shortcuts = "*"
 pandas = "*"
+coverage = "*"
 
 [dev-packages]
