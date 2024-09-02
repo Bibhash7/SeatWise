@@ -1,5 +1,5 @@
 # SeatWise
-A web application designed to allocate seats according to exam center preferences, ensuring an optimal distribution of candidates across multiple centers. This project is built using **Django Rest Framework**, backed by **PostgreSQL**, and deployed using **Docker** for a streamlined and scalable deployment process.
+A web application designed to allocate seats according to exam center preferences, ensuring an optimal distribution of candidates across multiple centers. This project is built using **Django Rest Framework**, backed by **PostgreSQL, Pandas dataframe**, and deployed using **Docker** for a streamlined and scalable deployment process.
 
 ## Features
 - **Optimal Seat Allocation:** Allocates exam seats based on students' preferences for exam centers, ensuring efficient use of available resources.
