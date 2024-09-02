@@ -7,6 +7,9 @@ A web application designed to allocate seats according to exam center preference
 - **Custom Management Commands:** Includes a custom Django command to automate the creation of a superuser, simplifying the setup process.
 - **Dockerized Deployment:** The entire application is containerized using Docker, making it easy to deploy and scale.
 
+## Docker Image
+https://hub.docker.com/repository/docker/tarbi/seatwise/general
+
 ## Data Model
 [![Seat-Wise-DFD.png](https://i.postimg.cc/3w3Mz2Fm/Seat-Wise-DFD.png)](https://postimg.cc/Xr1DCGhY)
 
