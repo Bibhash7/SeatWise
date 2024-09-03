@@ -13,6 +13,38 @@ https://hub.docker.com/repository/docker/tarbi/seatwise/general
 ## Data Model
 [![Seat-Wise-DFD.png](https://i.postimg.cc/3w3Mz2Fm/Seat-Wise-DFD.png)](https://postimg.cc/Xr1DCGhY)
 
+## Project Structure
+
+```plaintext
+├── config/
+│   ├── settings.py                          # Django settings file
+│   ├── urls.py                              # URL routing for the application
+│   ├── wsgi.py                              # WSGI entry point for the application
+│   ├── asgi.py                              # ASGI entry point for the application
+│   └── ...
+├── exam_allocation/
+|   ├── utils/
+|   |   ├── groupify.py                      # Group stuends according to exam center choice and join with exam center for processing
+|   ├── management
+|   |   ├── commands
+|   |   |   ├── __init__.py
+|   |   |   ├── custom_superuser.py          # Create custom superuser upon docker compose up
+|   ├── migrations
+|   |   ├── __init__.py
+|   |   ├── 0001_initial.py                  # Initial migration file
+│   ├── models.py                            # Django models for Exam, ExamCenter, Student, and Allocation
+│   ├── views.py                             # Views and business logic for seat allocation
+│   ├── constants.py                         # Predefined constants for readability and better scalability
+│   └── ...
+├── Dockerfile                               # Dockerfile for containerizing the application
+├── docker-compose.yml                       # Docker Compose file for setting up development and production environments
+└── README.md                                # Project documentation
+```
+
+## API Endpoints
+- **GET/admin:** For CRUD operation on Exam, Student, ExamCenter.
+- **POST/generate-allocation:** For generate the allocation that will be stored in Allocation table.
+
 ## Sceenshots
 - **Exams**
   
