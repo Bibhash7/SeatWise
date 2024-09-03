@@ -12,5 +12,7 @@ python-dotenv = "*"
 django-shortcuts = "*"
 pandas = "*"
 coverage = "*"
+black = "*"
+drf-yasg = "*"
 
 [dev-packages]

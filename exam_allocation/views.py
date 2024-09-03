@@ -2,12 +2,25 @@ from django.db import connection
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from here_debugger.debug import here_debug
 from collections import deque
 from .models import Student, Exam, Allocation
 from .constants import TableAttributes, ErrorMessage, SuccessMessage, UtilityAttribues, RawSQL
 from .utils import groupify
 
+@swagger_auto_schema(
+    method='post',
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=['name'],
+        properties={
+            'exam_name': openapi.Schema(type=openapi.TYPE_STRING, description='Name of the person'),
+        },
+    ),
+    responses={200: 'OK'}
+)
 
 @api_view(['POST'])
 def generate_allocation(request):
@@ -93,7 +106,7 @@ def generate_allocation(request):
                             total_capacity-=1
 
             Allocation.objects.bulk_create(final_allocation_list)
-            return Response({SuccessMessage.SUCCESS.value: SuccessMessage.ALLOCATION_SUCCESSFUL.value}, status=status.HTTP_200_OK)
+            return Response({SuccessMessage.SUCCESS.value: SuccessMessage.ALLOCATION_SUCCESSFUL.value}, status=status.HTTP_201_CREATED)
         
         else:
             return Response({ErrorMessage.ERROR.value: ErrorMessage.EXAM_NOT_FOUND.value}, status=status.HTTP_404_NOT_FOUND)
