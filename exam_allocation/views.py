@@ -1,22 +1,23 @@
-from django.db import connection
+# views.py
+import time
+from django_rq import get_queue
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from here_debugger.debug import here_debug
-from collections import deque
-from .models import Student, Exam, Allocation
-from .constants import TableAttributes, ErrorMessage, SuccessMessage, UtilityAttribues, RawSQL
-from .utils import groupify
+from .tasks.process_allocation_in_queue import perform_allocation
+from .constants import TableAttributes, ErrorMessage, SuccessMessage, UtilityAttribues, JobStatus
+from rq.job import Job
 
 @swagger_auto_schema(
     method='post',
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
-        required=['name'],
+        required=[TableAttributes.EXAM_NAME.value],
         properties={
-            'exam_name': openapi.Schema(type=openapi.TYPE_STRING, description='Name of the person'),
+            TableAttributes.EXAM_NAME.value: openapi.Schema(type=openapi.TYPE_STRING, description='Name of the exam'),
         },
     ),
     responses={200: 'OK'}
@@ -27,97 +28,96 @@ def generate_allocation(request):
     """
         Allocates students based on their exam center preference.
     Args:
-        request (str): The exam the students appearing
+        request (str): The exam the students are appearing for
 
     Returns:
-       Response : Success if successfully allocate students among exam centers. On failure an appropriate error message.
+       Response ( HTTPResponse ): Success if successfully allocated students among exam centers. On failure, an appropriate error message.
     """
     try:
-        exam_name = request.data.get(TableAttributes.EXAM_NAME.value,"")
-        is_valid_exam = Exam.objects.filter(exam_name=exam_name).count()
-        if is_valid_exam:
-            with connection.cursor() as cursor:
-                cursor.execute(RawSQL.TRUNCATE_TABLE_ALLOCATION.value)
-            exam_date = Exam.objects.values_list(TableAttributes.EXAM_DATE.value, flat=True)[0]
-            processed_data = groupify.generate_student_group_data(TableAttributes.EXAM_CENTER_CHOICE.value)
-            total_students = Student.objects.count()
-            total_seats = 0
-            shift = [UtilityAttribues.SHIFT_1.value, UtilityAttribues.SHIFT_2.value]
-            
-            for data in processed_data:
-                total_seats+=data[TableAttributes.TOTAL_CAPACITY.value]
-                data[UtilityAttribues.ROLL_NUMBERS.value] = deque(data[UtilityAttribues.ROLL_NUMBERS.value])
-                
-            if(len(shift)*total_seats < total_students):
-                return Response({ErrorMessage.ERROR.value: ErrorMessage.TOO_MANY_STUDENTS.value}, status=status.HTTP_400_BAD_REQUEST)
-            
-            final_allocation_list = []
-            remaining_allocation_schedule = []
-            
-            for data in processed_data:
-                exam_center_id = data[TableAttributes.EXAM_CENTER_ID.value]
-                roll_numbers = data[UtilityAttribues.ROLL_NUMBERS.value]
-                for shift_id in shift:
-                    total_capacity = data[TableAttributes.TOTAL_CAPACITY.value]
-                    while roll_numbers:
-                        roll = roll_numbers[0]
-                        if total_capacity == 0:
-                            break
-                        allocation_object = Allocation(
-                            exam_name=exam_name,
-                            exam_center_id=exam_center_id,
-                            roll_number=roll,
-                            exam_date=exam_date,
-                            exam_time=shift_id
-                        )
-                        final_allocation_list.append(allocation_object)
-                        roll_numbers.popleft()
-                        total_capacity-=1
-                    
-                    remaining_allocation_schedule.append(
-                        {
-                            TableAttributes.EXAM_CENTER_ID.value: exam_center_id,
-                            TableAttributes.TOTAL_CAPACITY.value: total_capacity,
-                            UtilityAttribues.SHIFT_ID.value : shift_id
-                        }
-                    )
-                    
-            for data in processed_data:
-                roll_numbers = data[UtilityAttribues.ROLL_NUMBERS.value]
-                exam_center_id = data[TableAttributes.EXAM_CENTER_ID.value]
-                if roll_numbers:
-                    for allocation in remaining_allocation_schedule:
-                        total_capacity = allocation[TableAttributes.TOTAL_CAPACITY.value]
-                        shift_id = allocation[UtilityAttribues.SHIFT_ID.value]
-                        exam_center_id = allocation[TableAttributes.EXAM_CENTER_ID.value]
-                        while roll_numbers:
-                            roll = roll_numbers[0]
-                            if total_capacity == 0:
-                                break
-                            allocation_object = Allocation(
-                            exam_name=exam_name,
-                            exam_center_id=exam_center_id,
-                            roll_number=roll,
-                            exam_date=exam_date,
-                            exam_time=shift_id
-                            )
-                            final_allocation_list.append(allocation_object)
-                            roll_numbers.popleft()
-                            total_capacity-=1
-
-            Allocation.objects.bulk_create(final_allocation_list)
-            return Response({SuccessMessage.SUCCESS.value: SuccessMessage.ALLOCATION_SUCCESSFUL.value}, status=status.HTTP_201_CREATED)
+        exam_name = request.data.get(TableAttributes.EXAM_NAME.value, "")
+        if not exam_name:
+            return Response({ErrorMessage.ERROR.value: ErrorMessage.INVALID_INPUT.value}, status=status.HTTP_400_BAD_REQUEST)
         
-        else:
-            return Response({ErrorMessage.ERROR.value: ErrorMessage.EXAM_NOT_FOUND.value}, status=status.HTTP_404_NOT_FOUND)
+        queue = get_queue(UtilityAttribues.DEFAULT_QUEUE.value)
+        job = queue.enqueue(perform_allocation, exam_name)
+        return Response({JobStatus.JOB_ID.value: job.id}, status=status.HTTP_202_ACCEPTED)
     
     except Exception as error:
         here_debug(error)
-        return Response({ErrorMessage.ERROR.value : ErrorMessage.INTERNAL_SERVER_ERROR.value}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    
-    
-    
-    
+        return Response({ErrorMessage.ERROR.value: ErrorMessage.INTERNAL_SERVER_ERROR.value}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['GET'])
+def get_task_status(request):
+    """
+        Returns the task status for Django Redis Queue Task.
+    Args:
+        request ( str ): contains the job id
 
+    Returns:
+        Response ( HTTPResponse ): Returns the job status, (Successful, falied, queued)
+    """
+    job_id = request.data.get(JobStatus.JOB_ID.value)
+    queue = get_queue(UtilityAttribues.DEFAULT_QUEUE.value)
+    try:
+        job = Job.fetch(job_id, connection=queue.connection)
+        if job.is_finished:
+           job_result = job.result 
+           if job_result:
+               if SuccessMessage.SUCCESS.value in job_result:
+                   return Response(
+                       {
+                            JobStatus.STATUS.value: JobStatus.SUCCESSFUL.value,
+                            SuccessMessage.SUCCESS.value: SuccessMessage.ALLOCATION_SUCCESSFUL.value
+                       }, 
+                       status=status.HTTP_201_CREATED
+                    )
+               elif ErrorMessage.TOO_MANY_STUDENTS.value in job_result:
+                   return Response(
+                       {
+                            JobStatus.STATUS.value: JobStatus.SUCCESSFUL.value, 
+                            ErrorMessage.ERROR.value: ErrorMessage.TOO_MANY_STUDENTS.value
+                       }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+               elif ErrorMessage.EXAM_NOT_FOUND.value in job_result:
+                   return Response(
+                       {
+                            JobStatus.STATUS.value: JobStatus.SUCCESSFUL.value, 
+                            ErrorMessage.ERROR.value: ErrorMessage.EXAM_NOT_FOUND.value
+                       }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                    )
+               
+               else:
+                   return Response({
+                            JobStatus.STATUS.value: JobStatus.SUCCESSFUL.value, 
+                            ErrorMessage.ERROR.value: ErrorMessage.INTERNAL_SERVER_ERROR.value
+                       }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                    )
+        elif job.is_failed:
+                here_debug(str(job.exc_info))
+                return Response({
+                        JobStatus.STATUS.value: JobStatus.FAILED.value, 
+                        ErrorMessage.ERROR.value: ErrorMessage.INTERNAL_SERVER_ERROR.value
+                    }, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+        else:
+            return Response({
+                    JobStatus.STATUS.value: JobStatus.QUEUED.value,
+                    ErrorMessage.ERROR.value: ErrorMessage.INTERNAL_SERVER_ERROR.value
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    except Exception as error:
+        here_debug(error)
+        return Response(
+            {
+                JobStatus.STATUS.value: JobStatus.FAILED.value, 
+                ErrorMessage.ERROR.value: ErrorMessage.INTERNAL_SERVER_ERROR.value
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

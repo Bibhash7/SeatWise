@@ -9,17 +9,35 @@ services:
         ports:
             - 10555:8000
         depends_on:
-        - db
+            - db
+            - redis
+
     db:
         image: postgres
         container_name: db
         environment: 
             - POSTGRES_DB=exam_allocation
             - POSTGRES_USER=postgres
-            - POSTGRES_HOST_PASSWORD=password 
+            - POSTGRES_PASSWORD=password 
             - POSTGRES_HOST_AUTH_METHOD=trust
         volumes:
             - pgdata:/var/lib/postgres/data
+
+    redis:
+        image: redis:alpine
+        container_name: redis
+        ports:
+            - "6379:6379"
+
+    rqworker:
+        container_name: rqworker
+        build: .
+        command: bash -c "python manage.py rqworker default --with-scheduler"
+        volumes:
+            - .:/code
+        depends_on:
+            - redis
+            - db
+
 volumes:
     pgdata:
-    

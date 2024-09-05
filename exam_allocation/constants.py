@@ -17,11 +17,14 @@ class TableAttributes(Enum):
     DATE_OF_BIRTH = "date_of_birth"
     EXAM_CENTER_CHOICE = "exam_center_choice"
     
+    
 class UtilityAttribues(Enum):
     SHIFT_ID = "shift_id"
     ROLL_NUMBERS = "roll_numbers"
     SHIFT_1 = "10.00 AM"
     SHIFT_2 = "2.00 PM"
+    DEFAULT_QUEUE = "default"
+    
     
 class SuccessMessage(Enum):
     SUCCESS = "Success"
@@ -39,6 +42,14 @@ class RawSQL(Enum):
     
 class FilePaths(Enum):
     EXAM_PATH = "fixtures\exam.json"
+    
+class JobStatus(Enum):
+    STATUS = "Job Status"
+    SUCCESSFUL = "Success"
+    FAILED = "Failed"
+    QUEUED = "Queued"
+    JOB_ID = "job_id"
+    
     
     
     

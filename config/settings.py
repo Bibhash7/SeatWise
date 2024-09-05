@@ -41,10 +41,20 @@ INSTALLED_APPS = [
     "rest_framework",
     "exam_allocation",
     'drf_yasg',
+    'django_rq',
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.openapi.AutoSchema',
+}
+
+RQ_QUEUES = {
+    'default': {
+        'HOST': 'redis',
+        'PORT': 6379,
+        'DB': 0,
+        'DEFAULT_TIMEOUT': 360,
+    }
 }
 
 MIDDLEWARE = [

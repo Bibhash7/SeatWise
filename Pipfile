@@ -14,5 +14,8 @@ pandas = "*"
 coverage = "*"
 black = "*"
 drf-yasg = "*"
+django-rq = "*"
+gevent = "*"
+rq = "*"
 
 [dev-packages]
